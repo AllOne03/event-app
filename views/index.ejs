@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Event System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    
+    <nav class="navbar navbar-dark bg-primary mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">Event System</a>
+            
+            <div>
+                <% if (user) { %>
+                    <span class="text-white me-3">Halo, <b><%= user.name %></b>!</span>
+                    
+                    <a href="/tiket-saya" class="btn btn-light text-primary btn-sm me-2 fw-bold">🎟️ Tiket Saya</a>
+
+                    <% if (user.role === 'admin' || user.role === 'organizer') { %>
+                        <a href="/admin" class="btn btn-warning btn-sm me-2 fw-bold">Dashboard</a>
+                    <% } %>
+                    
+                    <a href="/logout" class="btn btn-danger btn-sm">Logout</a>
+
+                <% } else { %>
+                    <a href="/login" class="btn btn-light btn-sm">Login / Daftar</a>
+                <% } %>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h3 class="mb-3">Daftar Acara Terbaru</h3>
+        
+        <div class="row">
+            <% if(events.length > 0) { %>
+                <% events.forEach(event => { %>
+                    <div class="col-md-4 mb-4">
+                        <div class="card shadow-sm h-100">
+                            
+                            <% if(event.image && event.image !== 'default.jpg') { %>
+                                <img src="/uploads/<%= event.image %>" class="card-img-top" alt="<%= event.title %>" style="height: 200px; object-fit: cover;">
+                            <% } else { %>
+                                <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 200px;">
+                                    <span>No Image</span>
+                                </div>
+                            <% } %>
+
+                            <div class="card-body">
+                                <span class="badge bg-info text-dark mb-2"><%= event.category_name %></span>
+                                <h5 class="card-title"><%= event.title %></h5>
+                                <h6 class="card-subtitle mb-2 text-muted">
+                                    <%= new Date(event.start_date).toLocaleDateString('id-ID') %>
+                                </h6>
+                                <p class="card-text text-truncate"><%= event.venue_name %></p>
+                                <a href="/event/<%= event.event_id %>" class="btn btn-primary w-100">Lihat Detail</a>
+                            </div>
+                        </div>
+                    </div>
+                <% }) %>
+                <% } else { %>
+                <div class="col-12">
+                    <div class="alert alert-warning">Belum ada acara yang tersedia saat ini.</div>
+                </div>
+            <% } %>
+        </div>
+    </div>
+
+</body>
+</html>

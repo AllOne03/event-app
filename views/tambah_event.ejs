@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tambah Event Baru</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">Buat Acara Baru</h4>
+                    </div>
+                    <div class="card-body">
+                        <form action="/admin/create" method="POST" enctype="multipart/form-data">
+                            
+                            <h5 class="text-secondary mb-3">1. Informasi Acara</h5>
+                            <div class="mb-3">
+                                <label>Nama Acara</label>
+                                <input type="text" name="title" class="form-control" required placeholder="Contoh: Konser Musik 2025">
+                            </div>
+                            <div class="mb-3">
+                                <label>Poster / Banner Acara</label>
+                                <input type="file" name="image" class="form-control" accept="image/*">
+                                <small class="text-muted">Format: JPG, PNG. Disarankan ukuran Landscape.</small>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label>Kategori</label>
+                                    <select name="category_id" class="form-select">
+                                        <% categories.forEach(cat => { %>
+                                            <option value="<%= cat.category_id %>">
+                                                <%= cat.name %>
+                                            </option>
+                                        <% }) %>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label>Lokasi (Venue)</label>
+                                    <select name="venue_id" class="form-select">
+                                        <% venues.forEach(venue => { %>
+                                            <option value="<%= venue.venue_id %>">
+                                                <%= venue.name %> (<%= venue.type === 'online' ? 'Online' : venue.city %>)
+                                            </option>
+                                        <% }) %>
+                                    </select>
+                                                                    </div>
+                            </div>
+                            <div class="mb-3">
+                                <label>Deskripsi Singkat</label>
+                                <textarea name="description" class="form-control" rows="3" required></textarea>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label>Tanggal Mulai</label>
+                                    <input type="date" name="start_date" class="form-control" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label>Tanggal Selesai</label>
+                                    <input type="date" name="end_date" class="form-control" required>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <h5 class="text-secondary mb-3">2. Jenis Tiket (Maksimal 3)</h5>
+                            
+                            <div class="card p-3 mb-3 bg-white border">
+                                <h6 class="fw-bold">Tiket Level 1 (Utama)</h6>
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <label>Nama Tiket</label>
+                                        <input type="text" name="ticket_names[]" class="form-control" placeholder="Contoh: VIP" required>
+                                    </div>
+                                    <div class="col-md-3 mb-2">
+                                        <label>Harga</label>
+                                        <input type="number" name="ticket_prices[]" class="form-control" placeholder="0" required>
+                                    </div>
+                                    <div class="col-md-3 mb-2">
+                                        <label>Kuota</label>
+                                        <input type="number" name="ticket_quotas[]" class="form-control" placeholder="50" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card p-3 mb-3 bg-light border">
+                                <h6 class="fw-bold text-muted">Tiket Level 2 (Opsional)</h6>
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <input type="text" name="ticket_names[]" class="form-control" placeholder="Contoh: Regular">
+                                    </div>
+                                    <div class="col-md-3 mb-2">
+                                        <input type="number" name="ticket_prices[]" class="form-control" placeholder="0">
+                                    </div>
+                                    <div class="col-md-3 mb-2">
+                                        <input type="number" name="ticket_quotas[]" class="form-control" placeholder="100">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card p-3 mb-3 bg-light border">
+                                <h6 class="fw-bold text-muted">Tiket Level 3 (Opsional)</h6>
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <input type="text" name="ticket_names[]" class="form-control" placeholder="Contoh: Presale">
+                                    </div>
+                                    <div class="col-md-3 mb-2">
+                                        <input type="number" name="ticket_prices[]" class="form-control" placeholder="0">
+                                    </div>
+                                    <div class="col-md-3 mb-2">
+                                        <input type="number" name="ticket_quotas[]" class="form-control" placeholder="100">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <h5 class="text-secondary mb-3">3. Sesi Pembuka</h5>
+                            <div class="mb-3">
+                                <label>Judul Sesi</label>
+                                <input type="text" name="session_title" class="form-control" value="Registrasi Ulang" required>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label>Jam Mulai</label>
+                                    <input type="datetime-local" name="start_time" class="form-control" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label>Jam Selesai</label>
+                                    <input type="datetime-local" name="end_time" class="form-control" required>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2 mt-4">
+                                <button type="submit" class="btn btn-success btn-lg">Simpan & Terbitkan Event</button>
+                                <a href="/admin" class="btn btn-secondary">Batal</a>
+                            </div>
+
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

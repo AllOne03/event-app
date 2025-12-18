@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard <%= role === 'admin' ? 'Administrator' : 'Organizer' %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-dark text-white">
+
+    <nav class="navbar navbar-dark bg-secondary mb-4">
+        <div class="container">
+            <span class="navbar-brand">
+                Panel <%= role === 'admin' ? 'Admin Pusat' : 'Penyelenggara' %>: <%= adminName %>
+            </span>
+            <a href="/" class="btn btn-outline-light btn-sm">Ke Halaman Depan &rarr;</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>📊 Kelola Acara <%= role === 'admin' ? 'Semua User' : 'Anda' %></h2>
+            <a href="/admin/create" class="btn btn-success shadow">+ Buat Acara Baru</a>
+        </div>
+        
+        <div class="card bg-secondary text-white shadow">
+            <div class="card-body">
+                <table class="table table-dark table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th>Nama Acara</th>
+                            
+                            <% if(role === 'admin') { %>
+                                <th class="text-warning">Oleh Siapa?</th>
+                            <% } %>
+
+                            <th>Tanggal</th>
+                            <th>Status</th>
+                            <th>Peserta</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if(events.length > 0) { %>
+                            <% events.forEach(evt => { %>
+                                <tr>
+                                    <td><%= evt.title %></td>
+
+                                    <% if(role === 'admin') { %>
+                                        <td class="text-warning small"><%= evt.organizer_name %></td>
+                                    <% } %>
+
+                                    <td><%= new Date(evt.start_date).toLocaleDateString('id-ID') %></td>
+                                    <td>
+                                        <span class="badge bg-<%= evt.status === 'published' ? 'success' : (evt.status === 'draft' ? 'secondary' : 'danger') %>">
+                                            <%= evt.status %>
+                                        </span>
+                                    </td>
+                                    <td class="fw-bold text-info"><%= evt.total_peserta %></td>
+                                    <td>
+                                        <a href="/admin/edit/<%= evt.event_id %>" class="btn btn-sm btn-primary">Edit</a>
+                                        
+                                        <form action="/admin/delete/<%= evt.event_id %>" method="POST" style="display:inline;" onsubmit="return confirm('Hapus acara ini permanen?');">
+                                            <button type="submit" class="btn btn-sm btn-danger">Hapus</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        <% } else { %>
+                            <tr><td colspan="6" class="text-center py-4">Belum ada acara.</td></tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

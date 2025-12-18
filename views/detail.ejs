@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title><%= event.title %> - Detail Acara</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-dark bg-primary mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">Event System</a>
+            <a href="/" class="btn btn-outline-light btn-sm">Kembali ke Daftar</a>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card shadow-lg border-0">
+                    
+                    <% if(event.image && event.image !== 'default.jpg') { %>
+                        <img src="/uploads/<%= event.image %>" class="card-img-top" alt="<%= event.title %>" 
+                             style="max-height: 500px; object-fit: cover; width: 100%;">
+                    <% } else { %>
+                        <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 200px;">
+                            <span class="fs-4">Gambar Tidak Tersedia</span>
+                        </div>
+                    <% } %>
+
+                    <div class="card-body p-4">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <span class="badge bg-info text-dark mb-2"><%= event.category_name %></span>
+                                <h2 class="fw-bold mb-3"><%= event.title %></h2>
+                                
+                                <h5 class="text-secondary mt-4">Deskripsi Acara</h5>
+                                <p style="white-space: pre-line;"><%= event.description %></p>
+
+                                <hr>
+
+                                <h5 class="text-secondary mt-4">Jadwal Sesi Utama</h5>
+                                <div class="alert alert-light border">
+                                    <strong><%= event.session_title %></strong><br>
+                                    <small class="text-muted">
+                                        <%= new Date(event.start_time).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) %> - 
+                                        <%= new Date(event.end_time).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) %> WIB
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="card bg-light border-0 shadow-sm">
+                                    <div class="card-body">
+                                        <h5 class="card-title fw-bold">Info Waktu & Lokasi</h5>
+                                        
+                                        <ul class="list-unstyled mt-3 mb-4">
+                                            <li class="mb-2">
+                                                📅 <strong>Tanggal Mulai:</strong><br>
+                                                <%= new Date(event.start_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %>
+                                            </li>
+                                            <li class="mb-2">
+                                                📍 <strong>Lokasi:</strong><br>
+                                                <%= event.venue_name %> (<%= event.city %>)
+                                            </li>
+                                            <li class="mb-2">
+                                                👥 <strong>Penyelenggara:</strong><br>
+                                                <%= event.organizer_name %>
+                                            </li>
+                                        </ul>
+
+                                        <hr>
+
+                                        <% if (user) { %>
+                                            <form action="/register-event" method="POST">
+                                                <input type="hidden" name="event_id" value="<%= event.event_id %>">
+                                                
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">Pilih Tiket:</label>
+                                                    <select name="ticket_id" class="form-select" required>
+                                                        <% if(tickets.length > 0) { %>
+                                                            <% tickets.forEach(ticket => { %>
+                                                                <option value="<%= ticket.ticket_id %>">
+                                                                    <%= ticket.name %> - Rp <%= ticket.price.toLocaleString('id-ID') %>
+                                                                    (Sisa: <%= ticket.quota %>)
+                                                                </option>
+                                                            <% }) %>
+                                                        <% } else { %>
+                                                            <option disabled>Tiket Habis</option>
+                                                        <% } %>
+                                                    </select>
+                                                </div>
+
+                                                <button type="submit" class="btn btn-success w-100 fw-bold py-2">
+                                                    Beli Tiket Sekarang
+                                                </button>
+                                            </form>
+                                        <% } else { %>
+                                            <div class="text-center">
+                                                <p class="small text-muted mb-2">Ingin mendaftar?</p>
+                                                <a href="/login" class="btn btn-primary w-100">Login untuk Beli Tiket</a>
+                                            </div>
+                                        <% } %>
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
