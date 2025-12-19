@@ -3,50 +3,55 @@
 <head>
     <title>Dashboard <%= role === 'admin' ? 'Administrator' : 'Organizer' %></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .card { border: none; border-radius: 10px; }
+        .table thead th { vertical-align: middle; }
+    </style>
 </head>
 <body class="bg-dark text-white">
 
-    <nav class="navbar navbar-dark bg-secondary mb-4">
+    <nav class="navbar navbar-dark bg-secondary mb-4 shadow-sm">
         <div class="container">
-            <span class="navbar-brand">
+            <span class="navbar-brand fw-bold">
                 Panel <%= role === 'admin' ? 'Admin Pusat' : 'Penyelenggara' %>: <%= adminName %>
             </span>
             <a href="/" class="btn btn-outline-light btn-sm">Ke Halaman Depan &rarr;</a>
         </div>
     </nav>
 
-    <div class="container">
+    <div class="container pb-5">
+        
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>📊 Kelola Acara <%= role === 'admin' ? 'Semua User' : 'Anda' %></h2>
-            <a href="/admin/create" class="btn btn-success shadow">+ Buat Acara Baru</a>
+            <h2 class="fw-bold">📊 Kelola Acara <%= role === 'admin' ? 'Semua User' : 'Anda' %></h2>
+            <a href="/admin/create" class="btn btn-success shadow px-4 py-2 fw-bold">+ Buat Acara Baru</a>
         </div>
         
-        <div class="card bg-secondary text-white shadow">
-            <div class="card-body">
+        <div class="card bg-secondary text-white shadow mb-5">
+            <div class="card-body p-0">
                 <table class="table table-dark table-hover mb-0 align-middle">
-                    <thead>
+                    <thead class="table-light">
                         <tr>
-                            <th>Nama Acara</th>
+                            <th class="py-3 ps-3">Nama Acara</th>
                             
                             <% if(role === 'admin') { %>
-                                <th class="text-warning">Oleh Siapa?</th>
+                                <th class="text-dark">Oleh Siapa?</th>
                             <% } %>
 
                             <th>Tanggal</th>
                             <th>Status</th>
-                            <th>Peserta</th>
-                            <th>Aksi</th>
+                            <th class="text-center">Sisa Seat</th> <th class="text-center">Peserta</th>
+                            <th class="text-end pe-3">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         <% if(events.length > 0) { %>
                             <% events.forEach(evt => { %>
                                 <tr>
-                                    <td><%= evt.title %></td>
+                                    <td class="ps-3 fw-bold"><%= evt.title %></td>
 
                                     <% if(role === 'admin') { %>
                                         <td class="text-warning small"><%= evt.organizer_name %></td>
-                                    <% } %>
+                                    <% } %> 
 
                                     <td><%= new Date(evt.start_date).toLocaleDateString('id-ID') %></td>
                                     <td>
@@ -54,24 +59,72 @@
                                             <%= evt.status %>
                                         </span>
                                     </td>
-                                    <td class="fw-bold text-info"><%= evt.total_peserta %></td>
-                                    <td>
+                                    
+                                    <td class="text-center fw-bold text-info">
+                                        <%= evt.sisa_seat ? evt.sisa_seat : 0 %>
+                                    </td>
+
+                                    <td class="text-center"><%= evt.total_peserta %> org</td>
+                                    
+                                    <td class="text-end pe-3">
                                         <a href="/admin/edit/<%= evt.event_id %>" class="btn btn-sm btn-primary">Edit</a>
                                         
-                                        <form action="/admin/delete/<%= evt.event_id %>" method="POST" style="display:inline;" onsubmit="return confirm('Hapus acara ini permanen?');">
+                                        <form action="/admin/delete/<%= evt.event_id %>" method="POST" style="display:inline;" onsubmit="return confirm('Hapus acara ini permanen? Data peserta juga akan terhapus.');">
                                             <button type="submit" class="btn btn-sm btn-danger">Hapus</button>
                                         </form>
                                     </td>
                                 </tr>
                             <% }) %>
                         <% } else { %>
-                            <tr><td colspan="6" class="text-center py-4">Belum ada acara.</td></tr>
+                            <tr><td colspan="7" class="text-center py-5">Belum ada acara yang dibuat.</td></tr>
                         <% } %>
                     </tbody>
                 </table>
             </div>
         </div>
-    </div>
 
-</body>
+        <hr class="my-5 border-secondary">
+
+        <h3 class="fw-bold mb-3">📋 Daftar Semua Transaksi (Peserta)</h3>
+        
+        <div class="card shadow">
+            <div class="card-body p-0">
+                <table class="table table-striped table-bordered mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="ps-3">ID</th>
+                            <th>Nama Peserta</th>
+                            <th>Event yang Dibeli</th>
+                            <th>Status</th>
+                            <th class="text-center">Aksi (Hapus)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if(list_peserta && list_peserta.length > 0) { %>
+                            <% list_peserta.forEach(peserta => { %>
+                            <tr>
+                                <td class="ps-3">#<%= peserta.registration_id %></td>
+                                <td class="fw-bold"><%= peserta.nama_peserta %></td>
+                                <td><%= peserta.nama_event %></td>
+                                <td>
+                                    <span class="badge bg-success"><%= peserta.status %></span>
+                                </td>
+                                <td class="text-center">
+                                    <form action="/admin/registrations/delete/<%= peserta.registration_id %>" method="POST" onsubmit="return confirm('Hapus peserta ini? Kuota tiket akan dikembalikan (+1).')">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            🗑️ Hapus Transaksi
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <% }) %>
+                        <% } else { %>
+                            <tr><td colspan="5" class="text-center py-4 text-dark">Belum ada transaksi masuk.</td></tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div> </body>
 </html>

@@ -1,3 +1,10 @@
+require('dotenv').config();
+console.log("--------------------------------------");
+console.log("DEBUGGING ENV:");
+console.log("DB_USER dari .env:", process.env.DB_USER);
+console.log("DB_NAME dari .env:", process.env.DB_NAME);
+console.log("--------------------------------------");
+
 const express = require('express');
 const bodyParser = require('body-parser');
 const session = require('express-session'); // UNTUK SESI LOGIN
@@ -122,8 +129,24 @@ app.post('/register-event', (req, res) => {
             console.error(err);
             return res.send("Gagal memproses transaksi.");
         }
+
+	// 4. Siapkan Query Kurangi Kuota
+    	// "Kurangi kolom quota sebanyak 1 dimana ticket_id-nya sesuai"
+    	const sqlUpdateQuota = "UPDATE ticket_types SET quota = quota - 1 WHERE ticket_id = ?";
+
+    	// 5. Jalankan Update
+    	// Pastikan variabel 'ticketId' sama dengan yang dipakai di query insert di atas
+    	db.query(sqlUpdateQuota, [ticket_id], (errUpdate, resultUpdate) => {
+        	if (errUpdate) {
+            	console.error("Gagal update kuota:", errUpdate);
+            	// Tetap lanjut redirect walau update gagal (opsional)
+        	}
+
+        	// 6. Baru Redirect setelah update selesai
+        	res.redirect('/my-tickets'); 
+    	});		  		
         
-        // 4. Tampilkan Halaman Sukses Sederhana
+        // 7. Tampilkan Halaman Sukses Sederhana
         res.send(`
             <div style="text-align:center; padding: 50px; font-family: sans-serif;">
                 <h1 style="color:green;">✅ Transaksi Berhasil!</h1>
@@ -258,28 +281,31 @@ function cekAdmin(req, res, next) {
 // ================= FITUR TAMBAH EVENT (CRUD) =================
 
 // --- DASHBOARD (LOGIKA PEMISAH 3 AKTOR) ---
+// --- DASHBOARD (LOGIKA PEMISAH 3 AKTOR + DATA PESERTA) ---
+
+// --- DASHBOARD (LOGIKA PEMISAH 3 AKTOR + DATA PESERTA) ---
 app.get('/admin', cekAdmin, (req, res) => {
     const userRole = req.session.user.role;
     const userId = req.session.user.id;
 
+    // 1. SIAPKAN QUERY UNTUK EVENT
     let sqlEvents;
     let params = [];
 
-    // SKENARIO 1: Jika yang login adalah ADMIN (Super User)
     if (userRole === 'admin') {
         sqlEvents = `
             SELECT events.*, venues.name as venue_name, users.full_name as organizer_name,
-            (SELECT COUNT(*) FROM registrations WHERE registrations.event_id = events.event_id) as total_peserta
+            (SELECT COUNT(*) FROM registrations WHERE registrations.event_id = events.event_id) as total_peserta,
+            (SELECT SUM(quota) FROM ticket_types WHERE ticket_types.event_id = events.event_id) AS sisa_seat
             FROM events 
             JOIN venues ON events.venue_id = venues.venue_id
             JOIN users ON events.organizer_id = users.user_id
             ORDER BY start_date DESC`;
-    } 
-    // SKENARIO 2: Jika yang login adalah ORGANIZER
-    else {
+    } else {
         sqlEvents = `
             SELECT events.*, venues.name as venue_name, 
-            (SELECT COUNT(*) FROM registrations WHERE registrations.event_id = events.event_id) as total_peserta
+            (SELECT COUNT(*) FROM registrations WHERE registrations.event_id = events.event_id) as total_peserta,
+            (SELECT SUM(quota) FROM ticket_types WHERE ticket_types.event_id = events.event_id) AS sisa_seat
             FROM events 
             JOIN venues ON events.venue_id = venues.venue_id
             WHERE events.organizer_id = ? 
@@ -287,13 +313,45 @@ app.get('/admin', cekAdmin, (req, res) => {
         params = [userId];
     }
 
-    db.query(sqlEvents, params, (err, results) => {
+    // 2. JALANKAN QUERY EVENT
+    db.query(sqlEvents, params, (err, resultEvents) => {
         if (err) throw err;
-        
-        res.render('admin', { 
-            events: results, 
-            adminName: req.session.user.name,
-            role: userRole 
+
+        // 3. SIAPKAN QUERY UNTUK PESERTA (Agar list_peserta tidak undefined)
+        let sqlPeserta;
+        let paramsPeserta = [];
+
+        if (userRole === 'admin') {
+             sqlPeserta = `
+                SELECT registrations.*, users.full_name AS nama_peserta, events.title AS nama_event 
+                FROM registrations
+                JOIN users ON registrations.user_id = users.user_id
+                JOIN events ON registrations.event_id = events.event_id
+                ORDER BY registrations.registration_date DESC
+            `;
+        } else {
+             sqlPeserta = `
+                SELECT registrations.*, users.full_name AS nama_peserta, events.title AS nama_event 
+                FROM registrations
+                JOIN users ON registrations.user_id = users.user_id
+                JOIN events ON registrations.event_id = events.event_id
+                WHERE events.organizer_id = ?
+                ORDER BY registrations.registration_date DESC
+            `;
+            paramsPeserta = [userId];
+        }
+
+        // 4. JALANKAN QUERY PESERTA
+        db.query(sqlPeserta, paramsPeserta, (err2, resultPeserta) => {
+            if (err2) throw err2;
+
+            // 5. KIRIM KEDUA DATA KE VIEW
+            res.render('admin', { 
+                events: resultEvents, 
+                list_peserta: resultPeserta, // <--- INI KUNCINYA
+                adminName: req.session.user.name,
+                role: userRole 
+            });
         });
     });
 });
@@ -459,6 +517,106 @@ app.post('/admin/create', cekAdmin, (req, res) => {
         const sqlSession = `INSERT INTO sessions (event_id, title, start_time, end_time, room_name) VALUES (?, ?, ?, ?, 'Main Hall')`;
         db.query(sqlSession, [newEventId, session_title, start_time, end_time], (err, resSession) => {
             res.redirect('/admin');
+        });
+    });
+});
+
+// --- FITUR EDIT PROFIL (User) ---
+
+// 1. Tampilkan Halaman Edit Profil
+// --- FITUR EDIT PROFIL (User) ---
+
+// 1. Tampilkan Halaman Edit Profil
+app.get('/profile/edit', (req, res) => {
+    // PERBAIKAN: Cek req.session.user (bukan userId)
+    if (!req.session.user) return res.redirect('/login');
+
+    const userId = req.session.user.id; // Ambil ID dari objek user
+
+    // Ambil data terbaru dari DB
+    db.query("SELECT * FROM users WHERE user_id = ?", [userId], (err, result) => {
+        if (err) throw err;
+        // Pastikan user ditemukan
+        if (result.length > 0) {
+            res.render('edit_profile', { user: result[0] });
+        } else {
+            res.redirect('/login');
+        }
+    });
+});
+
+// 2. Proses Update Data
+app.post('/profile/update', (req, res) => {
+    // PERBAIKAN: Cek req.session.user
+    if (!req.session.user) return res.redirect('/login');
+
+    const { full_name, email, password } = req.body;
+    const userId = req.session.user.id; // Ambil ID dari objek user
+
+    // Cek apakah user ingin ganti password atau tidak
+    let sqlUpdate;
+    let params;
+
+    if (password) {
+        // Update password juga
+        // (Catatan: Sebaiknya di-hash menggunakan bcrypt seperti saat register, tapi ini versi simple dulu)
+        // Jika ingin aman: const hash = bcrypt.hashSync(password, 10);
+        // Lalu gunakan 'hash' di query update.
+        
+        sqlUpdate = "UPDATE users SET full_name = ?, email = ?, password_hash = ? WHERE user_id = ?";
+        // params = [full_name, email, hash, userId]; // Jika pakai hash
+        params = [full_name, email, password, userId]; // Jika plain text (sesuai kode login Anda saat ini)
+    } else {
+        // Update nama & email saja
+        sqlUpdate = "UPDATE users SET full_name = ?, email = ? WHERE user_id = ?";
+        params = [full_name, email, userId];
+    }
+
+    db.query(sqlUpdate, params, (err, result) => {
+        if (err) {
+            console.error(err);
+            return res.send("Gagal update profil.");
+        }
+        
+        // Update session nama agar tampilan di navbar berubah seketika
+        req.session.user.name = full_name;
+        
+        // Kembali ke home
+        res.redirect('/'); 
+    });
+});
+// --- FITUR HAPUS TRANSAKSI (Admin) ---
+
+app.post('/admin/registrations/delete/:id', (req, res) => {
+    // Pastikan yang akses adalah admin (sesuaikan logika auth Anda)
+    // if (req.session.role !== 'admin') return res.redirect('/');
+
+    const registrationId = req.params.id;
+
+    // LOGIC: Sebelum hapus, ambil data dulu untuk tahu tiket apa yang dihapus
+    // Supaya kita bisa kembalikan KUOTA-nya (+1)
+    
+    // 1. Cari info tiketnya
+    const sqlGetInfo = "SELECT ticket_id FROM registrations WHERE registration_id = ?";
+    
+    db.query(sqlGetInfo, [registrationId], (err, result) => {
+        if (err || result.length === 0) return res.redirect('/admin');
+        
+        const ticketId = result[0].ticket_id;
+
+        // 2. Hapus Data Transaksi
+        const sqlDelete = "DELETE FROM registrations WHERE registration_id = ?";
+        
+        db.query(sqlDelete, [registrationId], (errDel) => {
+            if (errDel) console.error(errDel);
+
+            // 3. Kembalikan Kuota (Update ticket_types)
+            const sqlRestoreQuota = "UPDATE ticket_types SET quota = quota + 1 WHERE ticket_id = ?";
+            
+            db.query(sqlRestoreQuota, [ticketId], () => {
+                // Selesai, kembali ke dashboard
+                res.redirect('/admin');
+            });
         });
     });
 });
